@@ -13,11 +13,28 @@ Ejercicios básicos
 - Complete el código de los ficheros necesarios para realizar la detección de pitch usando el programa
   `get_pitch`.
 
-   * Complete el cálculo de la autocorrelación e inserte a continuación el código correspondiente.
+   * Complete el cálculo de la autocorrelación e inserte a continuación el código correspondiente. 
+
+    void PitchAnalyzer::autocorrelation(const vector<float> &x, vector<float> &r) const {
+      int N = x.size();
+      for (unsigned int l = 0; l < r.size(); ++l) {
+        r[l] = 0.0;
+        for (int i = 0; i < N - l; i++) 
+          r[l] += x[i]*x[i+l];
+        r[l] /= N;
+      }
+
+      if (r[0] == 0.0F) //to avoid log() and divide zero 
+        r[0] = 1e-10; 
+    }
 
    * Inserte una gŕafica donde, en un *subplot*, se vea con claridad la señal temporal de un segmento de
      unos 30 ms de un fonema sonoro y su periodo de pitch; y, en otro *subplot*, se vea con claridad la
 	 autocorrelación de la señal y la posición del primer máximo secundario.
+
+  <img src="images/Grafica1.png" width="720" align="center">
+
+  El código para la generación de la gráfica se encuentra en el fichero plot1.py.
 
 	 NOTA: es más que probable que tenga que usar Python, Octave/MATLAB u otro programa semejante para
 	 hacerlo. Se valorará la utilización de la librería matplotlib de Python.
@@ -25,7 +42,41 @@ Ejercicios básicos
    * Determine el mejor candidato para el periodo de pitch localizando el primer máximo secundario de la
      autocorrelación. Inserte a continuación el código correspondiente.
 
+    ```cpp
+    vector<float>::const_iterator iR = r.begin(), iRMax = iR;
+    vector<float>::const_iterator iRpre = r.begin();
+    vector<float>::const_iterator iRpost = r.begin() + 1;
+
+    while (*iR > *iRpost || iR < r.begin() + npitch_min || *iR > 0.0F) {
+      iR++;
+      iRpost++;
+    }
+
+    iRMax = iR;
+
+    while (iR < r.begin() + npitch_max) {
+      if (*iR > *iRMax) {
+        iRpre = iR - 1;
+        iRpost = iR + 1;
+        if (*iR > *iRpre && *iR > *iRpost)
+          iRMax = iR;
+      }
+      ++iR;
+    }
+
+    unsigned int lag = iRMax - r.begin();
+    ```
+
    * Implemente la regla de decisión sonoro o sordo e inserte el código correspondiente.
+
+  ```cpp
+   bool PitchAnalyzer::unvoiced(float pot, float r1norm, float rmaxnorm) const {
+    if (pot < -50 || r1norm < 0.7 || rmaxnorm < 0.3 || (r1norm < 0.93 && rmaxnorm < 0.4))
+      return true; //Unvoiced Sound
+    else
+      return false; //Voiced Sound
+  }
+  ´´´
 
 - Una vez completados los puntos anteriores, dispondrá de una primera versión del detector de pitch. El 
   resto del trabajo consiste, básicamente, en obtener las mejores prestaciones posibles con él.
@@ -43,18 +94,34 @@ Ejercicios básicos
 	    Recuerde configurar los paneles de datos para que el desplazamiento de ventana sea el adecuado, que
 		en esta práctica es de 15 ms.
 
+    <img src="images/Grafica2.png" width="720" align="center">
+
+    El código para la generación de la gráfica se encuentra en el fichero plot2.py.
+
+
       - Use el detector de pitch implementado en el programa `wavesurfer` en una señal de prueba y compare
 	    su resultado con el obtenido por la mejor versión de su propio sistema.  Inserte una gráfica
 		ilustrativa del resultado de ambos detectores.
-  
+
+    <img src="images/Grafica3.png" width="720" align="center">
+
+    El código para la generación de la gráfica se encuentra en el fichero plot3.py y tomando como ejemplo la señal sb014.wav
+
+
   * Optimice los parámetros de su sistema de detección de pitch e inserte una tabla con las tasas de error
     y el *score* TOTAL proporcionados por `pitch_evaluate` en la evaluación de la base de datos 
 	`pitch_db/train`..
+
+  <img src="images/Results.png" width="720" align="center">
 
    * Inserte una gráfica en la que se vea con claridad el resultado de su detector de pitch junto al del
      detector de Wavesurfer. Aunque puede usarse Wavesurfer para obtener la representación, se valorará
 	 el uso de alternativas de mayor calidad (particularmente Python).
    
+    <img src="images/Grafica4.png" width="720" align="center">
+
+    Habiendo tomado por ejemplo sb018.wav
+
 
 Ejercicios de ampliación
 ------------------------
@@ -68,6 +135,14 @@ Ejercicios de ampliación
 
   * Inserte un *pantallazo* en el que se vea el mensaje de ayuda del programa y un ejemplo de utilización
     con los argumentos añadidos.
+
+  <img src="images/Usage.png" width="720" align="center">
+
+  Aquí se inserta el mensaje de ayuda del programa y a continuación se muestra un ejemplo de uso:
+
+  scripts/run_get_pitch.sh 50.5 0.7 0.3
+
+  Donde el 50.5 es el threshold de potencia, el cual debe introducirse en positivo, seguido de los thresholds de r1norm y rmaxnorm. Puede verse en el script run_get_pitch.sh la implementación para que acepte parámetros.
 
 - Implemente las técnicas que considere oportunas para optimizar las prestaciones del sistema de detección
   de pitch.
@@ -89,9 +164,45 @@ Ejercicios de ampliación
   Incluya, a continuación, una explicación de las técnicas incorporadas al detector. Se valorará la
   inclusión de gráficas, tablas, código o cualquier otra cosa que ayude a comprender el trabajo realizado.
 
-  También se valorará la realización de un estudio de los parámetros involucrados. Por ejemplo, si se opta
-  por implementar el filtro de mediana, se valorará el análisis de los resultados obtenidos en función de
-  la longitud del filtro.
+  Center-clipping:
+
+  ```cpp
+  float cl_threshold = 0.0;
+  float pow = 0.0;
+
+  for (unsigned int i = 0; i < x.size(); i++) 
+    pow += x[i] * x[i];
+  pow /= x.size();
+
+  cl_threshold = 0.8 * pow;
+
+  for (unsigned int i = 0; i < x.size(); i++)
+    if (x[i] >= cl_threshold)
+      x[i] -= cl_threshold;
+    else if (abs(x[i]) < cl_threshold)
+      x[i] = 0;
+    else 
+      x[i] += cl_threshold;
+  ```
+  Ejemplo de uso del center clipping para un tramo sonoro.
+
+  <img src="images/Usage.png" width="720" align="center">
+
+  Median filter
+
+  ```cpp
+  vector<float>window(3);
+
+  for (unsigned int i = 1; i < f0.size() - 1; ++i) { 
+    for (unsigned int p = 0; p < 3; ++p)
+      window[p] = f0[i - 1 + p];
+    sort(window.begin(), window.end());
+    f0[i] = window[1];
+  }
+  ```
+
+
+  También se valorará la realización de un estudio de los parámetros involucrados. Por ejemplo, si se opta por implementar el filtro de mediana, se valorará el análisis de los resultados obtenidos en función de la longitud del filtro.
    
 
 Evaluación *ciega* del detector

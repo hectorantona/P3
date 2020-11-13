@@ -9,9 +9,13 @@ using namespace std;
 /// Name space of UPC
 namespace upc {
   void PitchAnalyzer::autocorrelation(const vector<float> &x, vector<float> &r) const {
-
+    unsigned int N = x.size();
     for (unsigned int l = 0; l < r.size(); ++l) {
-  		/// \TODO Compute the autocorrelation r[l]
+  		/// \DONE Compute the autocorrelation r[l]
+      r[l] = 0.0;
+      for (unsigned int i = 0; i < N - l; i++) 
+        r[l] += x[i]*x[i+l];
+      r[l] /= N;
     }
 
     if (r[0] == 0.0F) //to avoid log() and divide zero 
@@ -26,7 +30,9 @@ namespace upc {
 
     switch (win_type) {
     case HAMMING:
-      /// \TODO Implement the Hamming window
+      /// \DONE Implement the Hamming window
+      for (unsigned int i = 0; i < frameLen; i++)
+        window[i] = 0.54 - 0.46*cos(2*M_PI*i/(frameLen-1));
       break;
     case RECT:
     default:
@@ -50,7 +56,10 @@ namespace upc {
     /// \TODO Implement a rule to decide whether the sound is voiced or not.
     /// * You can use the standard features (pot, r1norm, rmaxnorm),
     ///   or compute and use other ones.
-    return true;
+    if (pot < this->pow_th || r1norm < this->r1_th || rmaxnorm < this->rmax_th || (r1norm < 0.94 && rmaxnorm < 0.4))
+      return true; //Unvoiced Sound
+    else
+      return false; //Voiced Sound
   }
 
   float PitchAnalyzer::compute_pitch(vector<float> & x) const {
@@ -75,6 +84,26 @@ namespace upc {
 	///    - The lag corresponding to the maximum value of the pitch.
     ///	   .
 	/// In either case, the lag should not exceed that of the minimum value of the pitch.
+
+    vector<float>::const_iterator iRpre = r.begin();
+    vector<float>::const_iterator iRpost = r.begin() + 1;
+
+    while (*iR > *iRpost || iR < r.begin() + npitch_min || *iR > 0.0F) {
+      iR++;
+      iRpost++;
+    }
+
+    iRMax = iR;
+
+    while (iR < r.begin() + npitch_max) {
+      if (*iR > *iRMax) {
+        iRpre = iR - 1;
+        iRpost = iR + 1;
+        if (*iR > *iRpre && *iR > *iRpost)
+          iRMax = iR;
+      }
+      ++iR;
+    }
 
     unsigned int lag = iRMax - r.begin();
 
