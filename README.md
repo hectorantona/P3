@@ -112,7 +112,7 @@ Ejercicios básicos
     y el *score* TOTAL proporcionados por `pitch_evaluate` en la evaluación de la base de datos 
 	`pitch_db/train`..
 
-  <img src="images/Results.png" width="720" align="center">
+  <img src="images/Results.png" width="480" align="center">
 
    * Inserte una gráfica en la que se vea con claridad el resultado de su detector de pitch junto al del
      detector de Wavesurfer. Aunque puede usarse Wavesurfer para obtener la representación, se valorará
@@ -186,7 +186,7 @@ Ejercicios de ampliación
   ```
   Ejemplo de uso del center clipping para un tramo sonoro.
 
-  <img src="images/Usage.png" width="720" align="center">
+  <img src="images/Clipping.png" width="720" align="center">
 
   Median filter
 
